@@ -411,6 +411,8 @@ def run():
 
         dataStr = data_.decode('UTF-8')
 
+        print("Data: " + dataStr)
+
         if 'Host' not in dataStr:
             msg = 'OK'
             response_headers = {

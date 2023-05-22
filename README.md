@@ -47,7 +47,7 @@ This artifact requires Ubuntu 18.04+, Docker 23.0.1, minikube v1.29.0, and KNati
 ## Installation
 
 First, clone our artifact repository:
-<tt> git clone https://github.com/jovans2/MXFaaS_Artifact.git </tt>
+<tt> git clone https://github.com/macarronesc/mxfaas.git </tt>
 
 ### Setting up the environment
 In the main directory of the repository, script <tt>setup.sh</tt>

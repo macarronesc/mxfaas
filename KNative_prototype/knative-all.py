@@ -29,6 +29,7 @@ for line in lines:
     serviceName = line.split()[0] 
     if serviceName not in serviceNames:
         serviceNames.append(serviceName)
+        print("ServiceName: " + serviceName)
 
 for serviceName in serviceNames:
     services.append(getUrlByFuncName(serviceName))
@@ -59,6 +60,7 @@ output_file = open("run-all-out.txt", "w")
 
 indR = 0
 for load in loads:
+    print("LOAD: " + str(load))
     duration = 1
     seed = 100
     rate = load
@@ -71,13 +73,14 @@ for load in loads:
     instance_events = EnforceActivityWindow(0,duration,inter_arrivals)
         
     for service in services:
-        
+        print("Service: " + service)
         threads = []
         times = []
         after_time, before_time = 0, 0
 
         st = 0
         for t in instance_events:
+            print("Instance event: " + str(t))
             st = st + t - (after_time - before_time)
             before_time = time.time()
             if st > 0:
