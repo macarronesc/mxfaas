@@ -16,12 +16,27 @@ with open(lblPath, 'r') as f:
     labels = [l.rstrip() for l in f]
 
 def lambda_handler():
+    start_time = time.time()
+    lblPath = utils.download('http://data.mxnet.io/models/imagenet/synset.txt', path='/tmp/')
+    end_time = time.time()
+    
+    print(f'Time taken to execute the line: {end_time - start_time} seconds')
+    print('Files in /tmp directory:')
+    for file in os.listdir('/tmp'):
+        print(file)
+
+
+    
+
+    print("Lambda")
     blobName = "img10.jpg"
     dnld_blob.download_blob_new(blobName)
     full_blob_name = blobName.split(".")
     proc_blob_name = full_blob_name[0] + "_" + str(os.getpid()) + "." + full_blob_name[1]
     image = Image.open(proc_blob_name)
     image.save('tempImage_'+str(os.getpid())+'.jpeg')
+
+    print("Imagen guardada")
 
     # format image as (batch, RGB, width, height)
     img = mx.image.imread('tempImage_'+str(os.getpid())+'.jpeg')
