@@ -1,14 +1,14 @@
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
-  name: cnn-serving
+  name: mem-bandwidth
   namespace: default
 spec:
   template:
     spec:
       containerConcurrency: 1000
       containers:
-        - image: macarronesc0lithops/cnn_serving_knative:05
+        - image: macarronesc0lithops/mem_bandwidth_knative:01
           resources:
             requests:
               cpu: 1000m

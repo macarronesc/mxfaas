@@ -28,9 +28,8 @@ serviceNames = []
 for line in lines:
     serviceName = line.split()[0] 
     if serviceName not in serviceNames:
-        if serviceName == "cnn-serving":
-            serviceNames.append(serviceName)
-            print("ServiceName: " + serviceName)
+        serviceNames.append(serviceName)
+        print("ServiceName: " + serviceName)
 
 for serviceName in serviceNames:
     services.append(getUrlByFuncName(serviceName))
@@ -55,7 +54,7 @@ def EnforceActivityWindow(start_time, end_time, instance_events):
         pass
     return events_iit
 
-loads = [5]
+loads = [1, 5, 10]
 
 output_file = open("run-all-out.txt", "w")
 
