@@ -25,7 +25,9 @@ sudo curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://pack
 echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
 
 sudo apt-get update
-sudo apt-get install -y kubectl
+curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl"
+chmod +x ./kubectl
+sudo mv ./kubectl /usr/local/bin/kubectl
 
 wget https://github.com/knative/client/releases/download/knative-v1.8.1/kn-linux-amd64
 chmod +x kn-linux-amd64
