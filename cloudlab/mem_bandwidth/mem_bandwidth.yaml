@@ -8,7 +8,7 @@ spec:
     spec:
       containerConcurrency: 1000
       containers:
-        - image: macarronesc0lithops/mem_bandwidth_knative:01
+        - image: macarronesc0lithops/mem_bandwidth_knative:03
           resources:
             requests:
               cpu: 1000m

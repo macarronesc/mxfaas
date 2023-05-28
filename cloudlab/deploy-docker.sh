@@ -1,8 +1,11 @@
 # Actual version:
-# mem_bandwidth: 01: Initial version
+# mem_bandwidth: 
+# 01: Initial version
+# 02: Test version
+# 03: Final version
 
 service=mem_bandwidth
-version=01
+version=03
 
 
 cd ./$service

@@ -18,27 +18,13 @@ def getUrlByFuncName(funcName):
             url = line.split()[1]
             return url
 
-output = subprocess.check_output("kn service list", shell=True).decode("utf-8")
-lines = output.splitlines()
-lines = lines[1:] # delete the first line
-
-services = []
-serviceNames = []
-
-for line in lines:
-    serviceName = line.split()[0] 
-    if serviceName not in serviceNames:
-        serviceNames.append(serviceName)
-        print("ServiceName: " + serviceName)
-
-for serviceName in serviceNames:
-    services.append(getUrlByFuncName(serviceName))
+serviceName = "mem-bandwidth"
+service = getUrlByFuncName(serviceName)
 
 def lambda_func(service):
     global times
     t1 = time.time()
     r = requests.post(service, json={"name": "test"})
-    print(r.text)
     t2 = time.time()
     times.append(t2-t1)
 
@@ -54,7 +40,7 @@ def EnforceActivityWindow(start_time, end_time, instance_events):
         pass
     return events_iit
 
-loads = [1, 5, 10]
+loads = [5]
 
 output_file = open("run-all-out.txt", "w")
 
@@ -72,31 +58,30 @@ for load in loads:
     inter_arrivals = list(np.random.exponential(scale=beta, size=int(oversampling_factor*duration*rate)))
     instance_events = EnforceActivityWindow(0,duration,inter_arrivals)
         
-    for service in services:
-        print("Service: " + service)
-        threads = []
-        times = []
-        after_time, before_time = 0, 0
+    print("Service: " + str(service))
+    threads = []
+    times = []
+    after_time, before_time = 0, 0
 
-        st = 0
-        for t in instance_events:
-            print("Instance event: " + str(t))
-            st = st + t - (after_time - before_time)
-            before_time = time.time()
-            if st > 0:
-                time.sleep(st)
+    st = 0
+    for t in instance_events:
+        print("Instance event: " + str(t))
+        st = st + t - (after_time - before_time)
+        before_time = time.time()
+        if st > 0:
+            time.sleep(st)
 
-            threadToAdd = threading.Thread(target=lambda_func, args=(service, ))
-            threads.append(threadToAdd)
-            threadToAdd.start()
-            after_time = time.time()
+        threadToAdd = threading.Thread(target=lambda_func, args=(service, ))
+        threads.append(threadToAdd)
+        threadToAdd.start()
+        after_time = time.time()
 
-        for thread in threads:
-            thread.join()
+    for thread in threads:
+        thread.join()
 
-        print("=====================" + serviceNames[services.index(service)] + "=====================", file=output_file, flush=True)
-        print(mean(times), file=output_file, flush=True)
-        print(median(times), file=output_file, flush=True)
-        print(np.percentile(times, 90), file=output_file, flush=True)
-        print(np.percentile(times, 95), file=output_file, flush=True)
-        print(np.percentile(times, 99), file=output_file, flush=True)
+    print("=====================" + serviceName + "=====================", file=output_file, flush=True)
+    print(mean(times), file=output_file, flush=True)
+    print(median(times), file=output_file, flush=True)
+    print(np.percentile(times, 90), file=output_file, flush=True)
+    print(np.percentile(times, 95), file=output_file, flush=True)
+    print(np.percentile(times, 99), file=output_file, flush=True)
