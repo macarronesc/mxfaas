@@ -5,10 +5,11 @@ import time
 def lambda_handler():
     start_time = time.time()
 
-    myfile = "/tmp/azurefunctions-accesses-2020.csv.bz2"
-    # If file exists, delete it.
-    if os.path.isfile(myfile):
-        os.remove(myfile)
+    files = ["/tmp/bach-busoni.tiff", "/tmp/liszt-weinen.tiff", "/tmp/reger-albumblatt.tiff", "/tmp/schubert-marsch.tiff", "/tmp/wagner-lohengrin.tiff"]
+
+    for file in files:
+        if os.path.isfile(file):
+            os.remove(file)
     
     end_time = time.time()
 
@@ -16,6 +17,10 @@ def lambda_handler():
     elapsed_time = end_time - start_time
     print(elapsed_time)
     
-    gluon.utils.download('https://azurecloudpublicdataset2.blob.core.windows.net/azurepublicdatasetv2/azurefunctions_dataset2020/azurefunctions-accesses-2020.csv.bz2',path='/tmp/')
+    gluon.utils.download('https://github.com/Josef-Friedrich/test-files/raw/master/tiff/bach-busoni.tiff',path='/tmp/')
+    gluon.utils.download('https://github.com/Josef-Friedrich/test-files/blob/master/tiff/liszt-weinen.tiff',path='/tmp/')
+    gluon.utils.download('https://github.com/Josef-Friedrich/test-files/blob/master/tiff/reger-albumblatt.tiff',path='/tmp/')
+    gluon.utils.download('https://github.com/Josef-Friedrich/test-files/blob/master/tiff/schubert-marsch.tiff',path='/tmp/')
+    gluon.utils.download('https://github.com/Josef-Friedrich/test-files/blob/master/tiff/wagner-lohengrin.tiff',path='/tmp/')
 
     return {"result = ":elapsed_time}

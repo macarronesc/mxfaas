@@ -3,10 +3,10 @@
 # 01: Initial version
 # 02: Test version with only 1 download
 # 03: Final version with only 1 download
-# 04: Test version adding multiple downloads
+# 04: Final version adding multiple downloads
 
 service=mem_bandwidth
-version=03
+version=04
 
 
 cd ./$service
