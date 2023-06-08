@@ -1,9 +1,11 @@
 # Actual version:
-# cnn_serving: 03
+# cnn_serving: 04 --> Only added prints
+# cnn_serving: 05 --> Added a single download
+# cnn_serving: 06 --> Original version
 # img_res: 01
 
 service=cnn_serving
-version=03
+version=06
 
 
 cd ./$service
