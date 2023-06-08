@@ -8,7 +8,7 @@ spec:
     spec:
       containerConcurrency: 1000
       containers:
-        - image: macarronesc0lithops/img_res_knative:01
+        - image: jovanvr97/img_res_knative:latest
           resources:
             requests:
               cpu: 1000m

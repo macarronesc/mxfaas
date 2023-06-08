@@ -1,28 +1,10 @@
 import subprocess
+import time
 import numpy as np
 import threading
 import requests
 from statistics import mean, median,variance,stdev
-import re
-import time
-from multiprocessing.pool import ThreadPool
-import boto3
-from botocore import UNSIGNED
-from botocore.config import Config
 
-## Parallel download
-# Function that download 1 file
-def download_url(filename, s3):
-    try:
-        bucket_name = "gnomad-public-us-east-1"
-        bucket_dir = "truth-sets/hail-0.2/1000G.GRCh38.genotypes.20170504.mt/rows/rows/parts/"
-
-        s3.download_file(Filename='/tmp/' + filename, Bucket=bucket_name, Key=bucket_dir + filename)
-
-    except Exception as e:
-        print('Exception in download_file():', e)
-
-## MXFaaS
 # get the url of a function
 def getUrlByFuncName(funcName):
     try:
@@ -36,83 +18,85 @@ def getUrlByFuncName(funcName):
             url = line.split()[1]
             return url
 
+output = subprocess.check_output("kn service list", shell=True).decode("utf-8")
+lines = output.splitlines()
+lines = lines[1:] # delete the first line
+
+services = []
+serviceNames = []
+
+for line in lines:
+    serviceName = line.split()[0] 
+    if serviceName not in serviceNames:
+        serviceNames.append(serviceName)
+        print("ServiceName: " + serviceName)
+
+for serviceName in serviceNames:
+    services.append(getUrlByFuncName(serviceName))
+
 def lambda_func(service):
     global times
     t1 = time.time()
     r = requests.post(service, json={"name": "test"})
+    print(r.text)
     t2 = time.time()
+    times.append(t2-t1)
 
-    # Convert bytes literal to string
-    result_str = r.content.decode("utf-8")
+def EnforceActivityWindow(start_time, end_time, instance_events):
+    events_iit = []
+    events_abs = [0] + instance_events
+    event_times = [sum(events_abs[:i]) for i in range(1, len(events_abs) + 1)]
+    event_times = [e for e in event_times if (e > start_time)and(e < end_time)]
+    try:
+        events_iit = [event_times[0]] + [event_times[i]-event_times[i-1]
+                                         for i in range(1, len(event_times))]
+    except:
+        pass
+    return events_iit
 
-    # Use regular expression to extract the number
-    result_match = re.search(r'"result = ": ([0-9.e+-]+)', result_str)
+loads = [1, 5, 10]
 
-    if result_match:
-        result = float(result_match.group(1))
-        times.append(t2-t1 - result)
-        print(t2-t1 - result)
-    else:
-        times.append(t2-t1)
-
-def print_output(times, experiment, load):
-    global output_file, serviceName
-    print("THREADS: " + str(load), file=output_file, flush=True)
-    print(experiment, file=output_file, flush=True)
-    print("=====================" + serviceName + "=====================", file=output_file, flush=True)
-    print(mean(times), file=output_file, flush=True)
-    print(median(times), file=output_file, flush=True)
-    print(np.percentile(times, 90), file=output_file, flush=True)
-    print(np.percentile(times, 95), file=output_file, flush=True)
-    print(np.percentile(times, 99), file=output_file, flush=True)
-
-serviceName = "mem-bandwidth"
-service = getUrlByFuncName(serviceName)
-loads = [5]
 output_file = open("run-all-out.txt", "w")
 
-print("Service: " + str(service))
-
+indR = 0
 for load in loads:
     print("LOAD: " + str(load))
+    duration = 1
+    seed = 100
+    rate = load
+    # generate Poisson's distribution of events 
+    inter_arrivals = []
+    np.random.seed(seed)
+    beta = 1.0/rate
+    oversampling_factor = 2
+    inter_arrivals = list(np.random.exponential(scale=beta, size=int(oversampling_factor*duration*rate)))
+    instance_events = EnforceActivityWindow(0,duration,inter_arrivals)
+        
+    for service in services:
+        print("Service: " + service)
+        threads = []
+        times = []
+        after_time, before_time = 0, 0
 
-    # MXFaaS
-    print("MXFaaS")
-    threads = []
-    times = []
+        st = 0
+        for t in instance_events:
+            print("Instance event: " + str(t))
+            st = st + t - (after_time - before_time)
+            before_time = time.time()
+            if st > 0:
+                time.sleep(st)
 
-    for i in range(load, 0, -1):
-        threadToAdd = threading.Thread(target=lambda_func, args=(service, ))
-        threads.append(threadToAdd)
-        threadToAdd.start()
-
-    for thread in threads:
-        thread.join()
-
-    print_output(times, "MXFaaS", load)
-
-    # Parallel
-    print("Parallel")
-    threads = []
-    times = []
-
-    s3 = boto3.client('s3', config=Config(signature_version=UNSIGNED))
-    filenames = ['part-17', 'part-18', 'part-19', 'part-20', 'part-21']
-
-    for i in range(load, 0, -1):
-        t1 = time.time()
-        for filename in filenames:
-            threadToAdd = threading.Thread(target=download_url, args=(filename, s3))
+            threadToAdd = threading.Thread(target=lambda_func, args=(service, ))
             threads.append(threadToAdd)
             threadToAdd.start()
+            after_time = time.time()
 
         for thread in threads:
             thread.join()
-        t2 = time.time()
 
-        elapsed_time = t2 - t1
-        times.append(elapsed_time)
-        print(elapsed_time)
-
-    print("", file=output_file, flush=True)
-    print_output(times, "Parallel", load)
+        print("=====================" + serviceNames[services.index(service)] + "=====================", file=output_file, flush=True)
+        print(mean(times), file=output_file, flush=True)
+        print(median(times), file=output_file, flush=True)
+        print(np.percentile(times, 90), file=output_file, flush=True)
+        print(np.percentile(times, 95), file=output_file, flush=True)
+        print(np.percentile(times, 99), file=output_file, flush=True)

@@ -1,7 +1,7 @@
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
-  name: cnn-serving
+  name: cnn-serving-cloudlab
   namespace: default
 spec:
   template:
