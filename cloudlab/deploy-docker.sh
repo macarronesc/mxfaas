@@ -4,9 +4,10 @@
 # 02: Test version with only 1 download
 # 03: Final version with only 1 download
 # 04: Final version adding multiple downloads
+# 05: Added links from AWS public dataset
 
 service=mem_bandwidth
-version=04
+version=05
 
 
 cd ./$service
