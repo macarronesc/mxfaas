@@ -23,10 +23,10 @@ def lambda_handler():
 
     bucket_name = "gnomad-public-us-east-1"
     bucket_dir = "truth-sets/hail-0.2/1000G.GRCh38.genotypes.20170504.mt/rows/rows/parts/"
-    s3.download_file(Filename='part-17', Bucket=bucket_name, Key=bucket_dir + 'part-17')
-    s3.download_file(Filename='part-18', Bucket=bucket_name, Key=bucket_dir + 'part-18')
-    s3.download_file(Filename='part-19', Bucket=bucket_name, Key=bucket_dir + 'part-19')
-    s3.download_file(Filename='part-20', Bucket=bucket_name, Key=bucket_dir + 'part-20')
-    s3.download_file(Filename='part-21', Bucket=bucket_name, Key=bucket_dir + 'part-21')
+    s3.download_file(Filename='/tmp/part-17', Bucket=bucket_name, Key=bucket_dir + 'part-17')
+    s3.download_file(Filename='/tmp/part-18', Bucket=bucket_name, Key=bucket_dir + 'part-18')
+    s3.download_file(Filename='/tmp/part-19', Bucket=bucket_name, Key=bucket_dir + 'part-19')
+    s3.download_file(Filename='/tmp/part-20', Bucket=bucket_name, Key=bucket_dir + 'part-20')
+    s3.download_file(Filename='/tmp/part-21', Bucket=bucket_name, Key=bucket_dir + 'part-21')
     
     return {"result = ":elapsed_time}
