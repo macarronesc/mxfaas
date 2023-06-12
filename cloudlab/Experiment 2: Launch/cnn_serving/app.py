@@ -17,8 +17,10 @@ with open(lblPath, 'r') as f:
     labels = [l.rstrip() for l in f]
 
 def lambda_handler():
+    print("LLAMADA")
     blobName = "img10.jpg"
     dnld_blob.download_blob_new(blobName)
+    print("POST DOWNLOAD")
     full_blob_name = blobName.split(".")
     proc_blob_name = full_blob_name[0] + "_" + str(os.getpid()) + "." + full_blob_name[1]
     image = Image.open(proc_blob_name)
@@ -41,4 +43,5 @@ def lambda_handler():
         # print('With prob = %.5f, it contains %s' % (prob[0,i].asscalar(), labels[i]))
         inference = inference + 'With prob = %.5f, it contains %s' % (prob[0,i].asscalar(), labels[i]) + '. '
 
+    print("FINAL ")
     return {"result = ":inference}

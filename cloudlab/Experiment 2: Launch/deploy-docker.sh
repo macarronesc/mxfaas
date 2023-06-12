@@ -1,8 +1,9 @@
 # Actual version:
 # cnn_serving: 01 --> Initial version
+# cnn_serving: 02 --> Test version
 
 service=cnn_serving
-version=01
+version=02
 
 
 cd ./$service

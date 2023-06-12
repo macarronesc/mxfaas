@@ -151,6 +151,9 @@ def updateThread():
 def myFunction(data_, clientSocket_):
     global actionModule
     global numCores
+
+    print("NUM CORES THREAD")
+    print(numCores)
     
     dataStr = data_.decode('UTF-8')
     dataStrList = dataStr.splitlines()
@@ -166,7 +169,9 @@ def myFunction(data_, clientSocket_):
 
     # Set the main function
     if numCoreFlag == False:
+        print("PRE RESULT")
         result = actionModule.lambda_handler()
+        print("POST RESULT")
 
         # Send the result (Test Pid)
         result["myPID"] = os.getpid()
@@ -185,6 +190,7 @@ def myFunction(data_, clientSocket_):
     response_status = '200'
     response_status_text = 'OK' # this can be random
 
+    print("SENDING")
     # sending all this stuff
     r = '%s %s %s\r\n' % (response_proto, response_status, response_status_text)
     try:
@@ -235,6 +241,8 @@ def performIO(clientSocket_):
     data_ += clientSocket_.recv(1024)
     dataStr = data_.decode('UTF-8')
 
+    print("PETICION")
+
     while True:
         dataStrList = dataStr.splitlines()
         
@@ -250,26 +258,48 @@ def performIO(clientSocket_):
     blobName = message["blobName"]
     blockedID = message["pid"]
 
+    print(operation)
+
     my_id = threading.get_native_id()
 
     blob_client = BlobClient.from_connection_string(connection_string, container_name="artifacteval", blob_name=blobName)
 
-    lockPIDMap.acquire()
+    print("TEST5.-1")
+
+    # lockPIDMap.acquire()
+    print("TEST5.0")
     mapPIDtoStatus[blockedID] = "blocked"
+    print("TEST5.1")
     for child in mapPIDtoStatus.copy():
+        print("TEST5.2")
+
         if child in mapPIDtoStatus:
+            print("TEST5.3")
+
             if mapPIDtoStatus[child] == "waiting":
                 mapPIDtoStatus[child] = "running"
+                print("TEST5.4")
+
                 try:
+                    print("TEST5.5")
+
                     os.kill(child, signal.SIGCONT)
+                    print("TEST5.6")
+
                     break
                 except:
                     pass
-    lockPIDMap.release()
+    print("TEST5.7")
+    
+    # lockPIDMap.release()
+
+    print("TEST6")
     
     if operation == "get":
         lockCache.acquire()
+        print("TEST7")
         if blobName in checkTable:
+            print("TEST8")
             myLeader = mapPIDtoLeader[blobName]
             myEvent = threading.Event()
             mapPIDtoIO[my_id] = myEvent
@@ -277,6 +307,7 @@ def performIO(clientSocket_):
             checkTableShadow[myLeader].append(my_id)
             lockCache.release()
             myEvent.wait()
+            print("TEST9")
             lockCache.acquire()
             blob_val = valueTable[myLeader]
             mapPIDtoIO.pop(my_id)
@@ -286,6 +317,7 @@ def performIO(clientSocket_):
                 valueTable.pop(myLeader)
             lockCache.release()
         else:
+            print("TEST10")
             mapPIDtoLeader[blobName] = my_id
             checkTable[blobName] = []
             checkTableShadow[my_id] = []
@@ -293,6 +325,7 @@ def performIO(clientSocket_):
             lockCache.release()
             blob_val = (blob_client.download_blob()).readall()
             lockCache.acquire()
+            print("TEST11")
             valueTable[my_id] = blob_val
             checkTable[blobName].remove(my_id)
             for elem in checkTable[blobName]:
@@ -300,19 +333,24 @@ def performIO(clientSocket_):
             checkTable.pop(blobName)
             lockCache.release()
 
+        print("TEST12")
         full_blob_name = blobName.split(".")
         proc_blob_name = full_blob_name[0] + "_" + str(blockedID) + "." + full_blob_name[1]
         with open(proc_blob_name, "wb") as my_blob:
             my_blob.write(blob_val)
     else:
+        print("TEST13")
         fReadname = message["value"]
         fRead = open(fReadname,"rb")
         value = fRead.read()
         blob_client.upload_blob(value, overwrite=True)
         blob_val = "none"
 
-    lockPIDMap.acquire()
+    # lockPIDMap.acquire()
     numRunning = 0 # number of running processes
+
+    print("TEST")
+
     for child in mapPIDtoStatus.copy():
         if mapPIDtoStatus[child] == "running":
             numRunning += 1
@@ -322,21 +360,28 @@ def performIO(clientSocket_):
     else:
         mapPIDtoStatus[blockedID] = "waiting"
         os.kill(blockedID, signal.SIGSTOP)
-    lockPIDMap.release()
+    # lockPIDMap.release()
+
+    print("TEST2")
 
     messageToRet = json.dumps({"value":"OK"})
     try:
         os.kill(blockedID, signal.SIGCONT)
     except:
         pass
+
+    print("TEST3")
     clientSocket_.send(messageToRet.encode(encoding="utf-8"))
     try:
         os.kill(blockedID, signal.SIGCONT)
     except:
         pass
+
+    print("TEST4")
     # clientSocket_.close()
 
 def IOThread():
+    print("IOTHREAD")
     myHost = '0.0.0.0'
     myPort = 3333
 
@@ -347,6 +392,7 @@ def IOThread():
 
     while True:
         (clientSocket, _) = serverSocket.accept()
+        print("PETICION")
         threading.Thread(target=performIO, args=(clientSocket,)).start()
 
 def run():
@@ -403,6 +449,7 @@ def run():
         
         (clientSocket, address) = serverSocket.accept()
         print("Accept a new connection from %s" % str(address), flush=True)
+        print("HOLA")
         
         data_ = b''
 
@@ -410,11 +457,7 @@ def run():
 
         dataStr = data_.decode('UTF-8')
 
-        print("Data: " + dataStr)
-
         if 'Host' not in dataStr:
-            print("NO HOST")
-
             msg = 'OK'
             response_headers = {
                 'Content-Type': 'text/html; encoding=utf8',
@@ -453,7 +496,7 @@ def run():
         
         responseFlag = False
         if message != None:
-            print("Msg != none: ")
+            print("Message: ")
             print(message)
 
             if "numCores" in message:
@@ -514,7 +557,7 @@ def run():
             clientSocket.close()
             continue
 
-
+        print("TESTajkshdiajshdk")
 
         # a status mark of whether the process can run based on the free resources
         waitForRunning = False
@@ -522,10 +565,16 @@ def run():
         # The processes are running
         numIsRunning = 0
 
-        lockPIDMap.acquire()
+        # lockPIDMap.acquire()
         for child in mapPIDtoStatus.copy():
             if mapPIDtoStatus[child] == "running":
                 numIsRunning += 1
+
+        print("NUM IS RUNNING:")
+        print(numIsRunning)
+        
+        ####### TO-DO
+
         if numIsRunning >= numCores:
             waitForRunning = True # The process need to wait for resources
 
@@ -533,12 +582,38 @@ def run():
         if len(responseMapWindows) >=100:
             responseMapWindows.pop(0)
 
-        childProcess = os.fork()
+        threads = []
+        numFunctions = 1
+
+        if "numFunctions" in message:
+            numFunctions = int(message["numFunctions"])
+            
+        print("NUM FUNCTIONS:")
+        print(numFunctions)
+
+        t1 = time.time()
+        for i in range(numFunctions, 0, -1):
+            print("NUEVO THREAD")
+            threadToAdd = threading.Thread(target=myFunction, args=(data_, clientSocket))
+            threads.append(threadToAdd)
+            threadToAdd.start()
+
+        for thread in threads:
+            print("THREAD JOIN")
+            thread.join()
+        t2 = time.time()
+
+        elapsed_time = t2 - t1
+        print(elapsed_time)
+
+
+        """childProcess = os.fork()
         if childProcess != 0:
             responseMapWindows.append([childProcess, [time.time(), -1]])
 
         if childProcess == 0:
             # begin fork
+            print("MYFUNCTION")
             myFunction(data_, clientSocket)
             os._exit(os.EX_OK)
         else:
@@ -555,7 +630,7 @@ def run():
             lockPIDMap.release()
             # The childprocess is running, when it is finished, let the queue find waiting childprocesses
             threadWait = threading.Thread(target=waitTermination, args=(childProcess,))
-            threadWait.start()
+            threadWait.start()"""
 
 if __name__ == "__main__":
     # main program
