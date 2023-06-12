@@ -4,18 +4,11 @@ import sys
 import signal
 import threading
 import socket
-import numpy as np
 import time
 import signal
 from azure.storage.blob import BlobServiceClient, BlobClient
 
 connection_string = "DefaultEndpointsProtocol=https;AccountName=serverlesscache;AccountKey=O7MZkxwjyBWTcPL4fDoHi6n8GsYECQYiMe+KLOIPLpzs9BoMONPg2thf1wM1pxlVxuICJvqL4hWb+AStIKVWow==;EndpointSuffix=core.windows.net"
-blob_service_client = BlobServiceClient.from_connection_string(connection_string)
-container_client = blob_service_client.get_container_client("artifacteval")
-
-def signal_handler(sig, frame):
-    serverSocket_.close()
-    sys.exit(0)
 
 
 class PrintHook:
@@ -23,12 +16,6 @@ class PrintHook:
         self.func = None
         self.origOut = None
         self.out = out
-
-    def TestHook(self,text):
-        f = open('hook_log.txt','a')
-        f.write(text)
-        f.close()
-        return 0,0,text
 
     def Start(self,func=None):
         if self.out:
@@ -53,7 +40,7 @@ class PrintHook:
 
     def flush(self):
         self.origOut.flush()
-  
+    
     def write(self,text):
         proceed = 1
         lineNo = 0
@@ -78,7 +65,6 @@ def MyHookOut(text):
     return 1,1,' -- pid -- '+ str(os.getpid()) + ' ' + text
 
 # Global variables
-serverSocket_ = None # serverSocket
 actionModule = None # action module
 
 checkTable = {}
@@ -92,90 +78,15 @@ lockPIDMap = threading.Lock()
 requestQueue = [] # queue of child processes
 mapPIDtoStatus = {} # map from pid to status (running, waiting)
 
-responseMapWindows = [] # map from pid to response
-
-affinity_mask = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
-
-
-# The function to update the core nums by request. 
-def updateThread():
-    # Shared vaiable: numCores
-    global numCores
-
-    # Bind to 0.0.0.0:5500
-    myHost = '0.0.0.0'
-    myPort = 5500 
-
-    # Create a socket
-    serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    serverSocket.bind((myHost, myPort))
-    serverSocket.listen(1)
-
-    # Handle request
-    while True:
-        # Accept a connection
-        (clientSocket, _) = serverSocket.accept()
-        data_ = clientSocket.recv(1024)
-        dataStr = data_.decode('UTF-8')
-        dataStrList = dataStr.splitlines()
-        message = json.loads(dataStrList[-1])
-        
-        # Get the numCores and update the global variable
-        numCores = message["numCores"]
-        result = {"Response": "Ok"}
-        msg = json.dumps(result)
-
-        # Send the result and close the socket
-        response_headers = {
-            'Content-Type': 'text/html; encoding=utf8',
-            'Content-Length': len(msg),
-            'Connection': 'close',
-        }
-
-        response_headers_raw = ''.join('%s: %s\r\n' % (k, v) for k, v in response_headers.items())
-
-        response_proto = 'HTTP/1.1'
-        response_status = '200'
-        response_status_text = 'OK'
-
-        r = '%s %s %s\r\n' % (response_proto, response_status, response_status_text)
-
-        clientSocket.send(r.encode(encoding="utf-8"))
-        clientSocket.send(response_headers_raw.encode(encoding="utf-8"))
-        clientSocket.send('\r\n'.encode(encoding="utf-8"))
-        clientSocket.send(msg.encode(encoding="utf-8"))
-
-        clientSocket.close()
-
-def myFunction(data_, clientSocket_):
+def myFunction(clientSocket_):
     global actionModule
-    global numCores
-
-    print("NUM CORES THREAD")
-    print(numCores)
-    
-    dataStr = data_.decode('UTF-8')
-    dataStrList = dataStr.splitlines()
-    numCoreFlag = False
-    try:
-        message = json.loads(dataStrList[-1])
-        numCores = int(message["numCores"])
-        numCoreFlag = True
-        result = {"Response": "Ok"}
-        msg = json.dumps(result)
-    except:
-        pass
 
     # Set the main function
-    if numCoreFlag == False:
-        print("PRE RESULT")
-        result = actionModule.lambda_handler()
-        print("POST RESULT")
+    result = actionModule.lambda_handler()
 
-        # Send the result (Test Pid)
-        result["myPID"] = os.getpid()
-        msg = json.dumps(result)
+    # Send the result (Test Pid)
+    result["myPID"] = os.getpid()
+    msg = json.dumps(result)
 
         
     response_headers = {
@@ -190,7 +101,6 @@ def myFunction(data_, clientSocket_):
     response_status = '200'
     response_status_text = 'OK' # this can be random
 
-    print("SENDING")
     # sending all this stuff
     r = '%s %s %s\r\n' % (response_proto, response_status, response_status_text)
     try:
@@ -202,31 +112,6 @@ def myFunction(data_, clientSocket_):
         clientSocket_.close()
     clientSocket_.close()
 
-
-
-def waitTermination(childPid):
-    # wait for the running child process to exit
-    os.waitpid(childPid, 0)
-    for responseTime in responseMapWindows:
-        if responseTime[0] == childPid:
-            responseTime[1][1] = time.time()
-            break
-    lockPIDMap.acquire()
-    requestQueue.remove(childPid)
-    try:
-        mapPIDtoStatus.pop(childPid)
-    except:
-        pass
-    for index in range(len(requestQueue)):
-        # Find the first waiting child process and run it.
-        if(mapPIDtoStatus[requestQueue[index]] == "waiting"):
-            mapPIDtoStatus[requestQueue[index]] = "running"
-            try:
-                os.kill(requestQueue[index], signal.SIGCONT)
-                break
-            except:
-                pass
-    lockPIDMap.release()
 
 def performIO(clientSocket_):
     global mapPIDtoStatus
@@ -351,6 +236,7 @@ def performIO(clientSocket_):
 
     print("TEST")
 
+    ###### CHECK THIS
     for child in mapPIDtoStatus.copy():
         if mapPIDtoStatus[child] == "running":
             numRunning += 1
@@ -396,19 +282,17 @@ def IOThread():
         threading.Thread(target=performIO, args=(clientSocket,)).start()
 
 def run():
-    # serverSocket_: socket 
+    # serverSocket: socket 
     # actionModule:  the module to execute
     # requestQueue: 
     # mapPIDtoStatus: store status for each process (waiting / running)
-    global serverSocket_
     global actionModule
     global requestQueue
     global mapPIDtoStatus
     global numCores
-    global responseMapWindows
-    global affinity_mask
     # Set the core of mxcontainer
     numCores = 16
+    affinity_mask = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
     os.sched_setaffinity(0, affinity_mask)
 
     print("Welcome... ", numCores)
@@ -423,22 +307,13 @@ def run():
     serverSocket.bind((myHost, myPort))
     serverSocket.listen(1)
 
-    # serverSocket_ = serverSocket
-    
     # Set actionModule
     import app
     actionModule = app
 
-    # Set the signal handler
-    signal.signal(signal.SIGINT, signal_handler)
-
     # Redirect the stdOut and stdErr
     phOut = PrintHook()
     phOut.Start(MyHookOut)
-
-    # Monitor numCore update
-    threadUpdate = threading.Thread(target=updateThread)
-    threadUpdate.start()
 
     # Monitor I/O Block
     threadIntercept = threading.Thread(target=IOThread)
@@ -449,7 +324,6 @@ def run():
         
         (clientSocket, address) = serverSocket.accept()
         print("Accept a new connection from %s" % str(address), flush=True)
-        print("HOLA")
         
         data_ = b''
 
@@ -505,7 +379,6 @@ def run():
                 print("NumCores: " + str(numCores))
 
                 result = {"Response": "Ok"}
-                responseMapWindows = []
                 if "affinity_mask" in message:
                     affinity_mask = message["affinity_mask"]
                     os.sched_setaffinity(0, affinity_mask)
@@ -513,27 +386,13 @@ def run():
                 responseFlag = True
 
             # Node Controller: Test
-            if "Q" in message:
+            if "printInfo" in message:
                 print("Q in message")
 
-                i = []
-                for responseTime in responseMapWindows:
-                    if responseTime[1][1] != -1:
-                        i.append(responseTime[1][1] - responseTime[1][0])
-                if len(i) == 0:
-                    result={"p95": 0}
-                else:
-                    result = {"p95": np.percentile(i, 95)}
                 result["affinity_mask"] = list(affinity_mask)
                 result["numCores"] = numCores
                 msg = json.dumps(result)
                 responseFlag = True
-
-            # Node Controller: Clear all 
-            if "Clear" in message:
-                print("Clear in message")
-                
-                responseMapWindows = []
                 
         if responseFlag == True:
             response_headers = {
@@ -557,30 +416,22 @@ def run():
             clientSocket.close()
             continue
 
-        print("TESTajkshdiajshdk")
-
         # a status mark of whether the process can run based on the free resources
         waitForRunning = False
 
         # The processes are running
         numIsRunning = 0
 
-        # lockPIDMap.acquire()
         for child in mapPIDtoStatus.copy():
             if mapPIDtoStatus[child] == "running":
                 numIsRunning += 1
 
         print("NUM IS RUNNING:")
         print(numIsRunning)
-        
-        ####### TO-DO
 
+        #### CHECK
         if numIsRunning >= numCores:
             waitForRunning = True # The process need to wait for resources
-
-        # slide windows
-        if len(responseMapWindows) >=100:
-            responseMapWindows.pop(0)
 
         threads = []
         numFunctions = 1
@@ -591,12 +442,16 @@ def run():
         print("NUM FUNCTIONS:")
         print(numFunctions)
 
+        # Instead of having wait_termination and update_threads and maybe we can have:
+        # An algorithm that checks if the number of functions to execute is greater than the number of threads
+        # And if it is, then execute x functions, wait and then execute the rest
         t1 = time.time()
         for i in range(numFunctions, 0, -1):
             print("NUEVO THREAD")
-            threadToAdd = threading.Thread(target=myFunction, args=(data_, clientSocket))
+            threadToAdd = threading.Thread(target=myFunction, args=(clientSocket, ))
             threads.append(threadToAdd)
             threadToAdd.start()
+            time.sleep(1)
 
         for thread in threads:
             print("THREAD JOIN")
@@ -605,32 +460,6 @@ def run():
 
         elapsed_time = t2 - t1
         print(elapsed_time)
-
-
-        """childProcess = os.fork()
-        if childProcess != 0:
-            responseMapWindows.append([childProcess, [time.time(), -1]])
-
-        if childProcess == 0:
-            # begin fork
-            print("MYFUNCTION")
-            myFunction(data_, clientSocket)
-            os._exit(os.EX_OK)
-        else:
-            # Append submit time to the responseMapWindows
-            if waitForRunning:
-                # If there is no free resources (cpu core) for the process to run, then we set the childprocess to sleep.
-                mapPIDtoStatus[childProcess] = "waiting"
-                os.kill(childProcess, signal.SIGSTOP)
-            else:
-                # If there are free resources (cpu core) for the process to run, then we let the childprocess to run.
-                mapPIDtoStatus[childProcess] = "running"
-            
-            requestQueue.append(childProcess)
-            lockPIDMap.release()
-            # The childprocess is running, when it is finished, let the queue find waiting childprocesses
-            threadWait = threading.Thread(target=waitTermination, args=(childProcess,))
-            threadWait.start()"""
 
 if __name__ == "__main__":
     # main program

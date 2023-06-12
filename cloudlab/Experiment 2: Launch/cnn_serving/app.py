@@ -4,7 +4,6 @@ import mxnet as mx
 from PIL import Image
 from azure.storage.blob import BlobServiceClient, BlobClient
 import dnld_blob
-import time
 
 connection_string = "DefaultEndpointsProtocol=https;AccountName=serverlesscache;AccountKey=O7MZkxwjyBWTcPL4fDoHi6n8GsYECQYiMe+KLOIPLpzs9BoMONPg2thf1wM1pxlVxuICJvqL4hWb+AStIKVWow==;EndpointSuffix=core.windows.net"
 blob_service_client = BlobServiceClient.from_connection_string(connection_string)
@@ -17,10 +16,8 @@ with open(lblPath, 'r') as f:
     labels = [l.rstrip() for l in f]
 
 def lambda_handler():
-    print("LLAMADA")
     blobName = "img10.jpg"
     dnld_blob.download_blob_new(blobName)
-    print("POST DOWNLOAD")
     full_blob_name = blobName.split(".")
     proc_blob_name = full_blob_name[0] + "_" + str(os.getpid()) + "." + full_blob_name[1]
     image = Image.open(proc_blob_name)
@@ -43,5 +40,4 @@ def lambda_handler():
         # print('With prob = %.5f, it contains %s' % (prob[0,i].asscalar(), labels[i]))
         inference = inference + 'With prob = %.5f, it contains %s' % (prob[0,i].asscalar(), labels[i]) + '. '
 
-    print("FINAL ")
     return {"result = ":inference}

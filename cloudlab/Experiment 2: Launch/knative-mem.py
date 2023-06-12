@@ -37,7 +37,7 @@ for serviceName in serviceNames:
 def lambda_func(service):
     global times
     t1 = time.time()
-    # r = requests.post(service, json={"name": "test", "numCores": 10, "affinity_mask": list(range(10)), "Q": " "})
+    # r = requests.post(service, json={"name": "test", "numCores": 10, "affinity_mask": list(range(10)), "printInfo": " "})
     r = requests.post(service, json={"name": "test", "numFunctions": 5})
     print(r.text)
     t2 = time.time()
