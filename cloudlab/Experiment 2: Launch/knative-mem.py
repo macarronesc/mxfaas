@@ -34,11 +34,11 @@ for line in lines:
 for serviceName in serviceNames:
     services.append(getUrlByFuncName(serviceName))
 
-def lambda_func(service):
+def lambda_func(service, numFunctions):
     global times
     t1 = time.time()
-    # r = requests.post(service, json={"name": "test", "numCores": 10, "affinity_mask": list(range(10)), "printInfo": " "})
-    r = requests.post(service, json={"name": "test", "numFunctions": 5})
+    # r = requests.post(service, json={"numCores": 6, "affinity_mask": list(range(6)), "printInfo": " "})
+    r = requests.post(service, json={"name": "test", "numFunctions": numFunctions})
     print(r.text)
     t2 = time.time()
     times.append(t2-t1)
@@ -55,15 +55,7 @@ for load in loads:
         threads = []
         times = []
 
-        lambda_func(service)
-
-        """for i in range(load, 0, -1):
-            threadToAdd = threading.Thread(target=lambda_func, args=(service, ))
-            threads.append(threadToAdd)
-            threadToAdd.start()
-
-        for thread in threads:
-            thread.join()"""
+        lambda_func(service, load)
 
         print("=====================" + serviceNames[services.index(service)] + "=====================", file=output_file, flush=True)
         print(mean(times), file=output_file, flush=True)

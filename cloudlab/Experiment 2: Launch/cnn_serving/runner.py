@@ -74,10 +74,6 @@ valueTable = {}
 mapPIDtoIO = {}
 lockCache = threading.Lock()
 
-lockPIDMap = threading.Lock()
-requestQueue = [] # queue of child processes
-mapPIDtoStatus = {} # map from pid to status (running, waiting)
-
 def myFunction(clientSocket_):
     global actionModule
 
@@ -114,7 +110,6 @@ def myFunction(clientSocket_):
 
 
 def performIO(clientSocket_):
-    global mapPIDtoStatus
     global numCores
     global checkTable
     global mapPIDtoIO
@@ -149,121 +144,50 @@ def performIO(clientSocket_):
 
     blob_client = BlobClient.from_connection_string(connection_string, container_name="artifacteval", blob_name=blobName)
 
-    print("TEST5.-1")
-
-    # lockPIDMap.acquire()
-    print("TEST5.0")
-    mapPIDtoStatus[blockedID] = "blocked"
-    print("TEST5.1")
-    for child in mapPIDtoStatus.copy():
-        print("TEST5.2")
-
-        if child in mapPIDtoStatus:
-            print("TEST5.3")
-
-            if mapPIDtoStatus[child] == "waiting":
-                mapPIDtoStatus[child] = "running"
-                print("TEST5.4")
-
-                try:
-                    print("TEST5.5")
-
-                    os.kill(child, signal.SIGCONT)
-                    print("TEST5.6")
-
-                    break
-                except:
-                    pass
-    print("TEST5.7")
-    
-    # lockPIDMap.release()
-
-    print("TEST6")
-    
     if operation == "get":
-        lockCache.acquire()
-        print("TEST7")
-        if blobName in checkTable:
-            print("TEST8")
-            myLeader = mapPIDtoLeader[blobName]
-            myEvent = threading.Event()
-            mapPIDtoIO[my_id] = myEvent
-            checkTable[blobName].append(my_id)
-            checkTableShadow[myLeader].append(my_id)
-            lockCache.release()
-            myEvent.wait()
-            print("TEST9")
-            lockCache.acquire()
-            blob_val = valueTable[myLeader]
-            mapPIDtoIO.pop(my_id)
-            checkTableShadow[myLeader].remove(my_id)
-            if len(checkTableShadow[myLeader]) == 0:
-                checkTableShadow.pop(myLeader)
-                valueTable.pop(myLeader)
-            lockCache.release()
-        else:
-            print("TEST10")
-            mapPIDtoLeader[blobName] = my_id
-            checkTable[blobName] = []
-            checkTableShadow[my_id] = []
-            checkTable[blobName].append(my_id)
-            lockCache.release()
-            blob_val = (blob_client.download_blob()).readall()
-            lockCache.acquire()
-            print("TEST11")
-            valueTable[my_id] = blob_val
-            checkTable[blobName].remove(my_id)
-            for elem in checkTable[blobName]:
-                mapPIDtoIO[elem].set()
-            checkTable.pop(blobName)
-            lockCache.release()
-
-        print("TEST12")
+        with lockCache:
+            if blobName in checkTable:
+                myLeader = mapPIDtoLeader[blobName]
+                myEvent = threading.Event()
+                mapPIDtoIO[my_id] = myEvent
+                checkTable[blobName].append(my_id)
+                checkTableShadow[myLeader].append(my_id)
+                myEvent.wait()
+                blob_val = valueTable[myLeader]
+                mapPIDtoIO.pop(my_id)
+                checkTableShadow[myLeader].remove(my_id)
+                if len(checkTableShadow[myLeader]) == 0:
+                    checkTableShadow.pop(myLeader)
+                    valueTable.pop(myLeader)
+            else:
+                mapPIDtoLeader[blobName] = my_id
+                checkTable[blobName] = []
+                checkTableShadow[my_id] = []
+                checkTable[blobName].append(my_id)
+                blob_val = (blob_client.download_blob()).readall()
+                valueTable[my_id] = blob_val
+                checkTable[blobName].remove(my_id)
+                for elem in checkTable[blobName]:
+                    mapPIDtoIO[elem].set()
+                checkTable.pop(blobName)
+            
         full_blob_name = blobName.split(".")
         proc_blob_name = full_blob_name[0] + "_" + str(blockedID) + "." + full_blob_name[1]
         with open(proc_blob_name, "wb") as my_blob:
             my_blob.write(blob_val)
     else:
-        print("TEST13")
         fReadname = message["value"]
         fRead = open(fReadname,"rb")
         value = fRead.read()
         blob_client.upload_blob(value, overwrite=True)
         blob_val = "none"
-
-    # lockPIDMap.acquire()
-    numRunning = 0 # number of running processes
-
-    print("TEST")
-
-    ###### CHECK THIS
-    for child in mapPIDtoStatus.copy():
-        if mapPIDtoStatus[child] == "running":
-            numRunning += 1
-    if numRunning < numCores:
-        mapPIDtoStatus[blockedID] = "running"
-        os.kill(blockedID, signal.SIGCONT)
-    else:
-        mapPIDtoStatus[blockedID] = "waiting"
-        os.kill(blockedID, signal.SIGSTOP)
-    # lockPIDMap.release()
-
+    
     print("TEST2")
-
     messageToRet = json.dumps({"value":"OK"})
-    try:
-        os.kill(blockedID, signal.SIGCONT)
-    except:
-        pass
 
     print("TEST3")
     clientSocket_.send(messageToRet.encode(encoding="utf-8"))
-    try:
-        os.kill(blockedID, signal.SIGCONT)
-    except:
-        pass
-
-    print("TEST4")
+    ####### TEST IF IMPROVE THE SPEED #######
     # clientSocket_.close()
 
 def IOThread():
@@ -278,22 +202,18 @@ def IOThread():
 
     while True:
         (clientSocket, _) = serverSocket.accept()
-        print("PETICION")
         threading.Thread(target=performIO, args=(clientSocket,)).start()
 
 def run():
     # serverSocket: socket 
     # actionModule:  the module to execute
-    # requestQueue: 
-    # mapPIDtoStatus: store status for each process (waiting / running)
     global actionModule
-    global requestQueue
-    global mapPIDtoStatus
     global numCores
     # Set the core of mxcontainer
     numCores = 16
     affinity_mask = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
     os.sched_setaffinity(0, affinity_mask)
+    numFunctions = 1
 
     print("Welcome... ", numCores)
 
@@ -376,8 +296,6 @@ def run():
             if "numCores" in message:
                 numCores = int(message["numCores"])
 
-                print("NumCores: " + str(numCores))
-
                 result = {"Response": "Ok"}
                 if "affinity_mask" in message:
                     affinity_mask = message["affinity_mask"]
@@ -387,12 +305,13 @@ def run():
 
             # Node Controller: Test
             if "printInfo" in message:
-                print("Q in message")
-
                 result["affinity_mask"] = list(affinity_mask)
                 result["numCores"] = numCores
                 msg = json.dumps(result)
                 responseFlag = True
+
+            if "numFunctions" in message:
+                numFunctions = int(message["numFunctions"])
                 
         if responseFlag == True:
             response_headers = {
@@ -416,28 +335,7 @@ def run():
             clientSocket.close()
             continue
 
-        # a status mark of whether the process can run based on the free resources
-        waitForRunning = False
-
-        # The processes are running
-        numIsRunning = 0
-
-        for child in mapPIDtoStatus.copy():
-            if mapPIDtoStatus[child] == "running":
-                numIsRunning += 1
-
-        print("NUM IS RUNNING:")
-        print(numIsRunning)
-
-        #### CHECK
-        if numIsRunning >= numCores:
-            waitForRunning = True # The process need to wait for resources
-
         threads = []
-        numFunctions = 1
-
-        if "numFunctions" in message:
-            numFunctions = int(message["numFunctions"])
             
         print("NUM FUNCTIONS:")
         print(numFunctions)
@@ -445,16 +343,20 @@ def run():
         # Instead of having wait_termination and update_threads and maybe we can have:
         # An algorithm that checks if the number of functions to execute is greater than the number of threads
         # And if it is, then execute x functions, wait and then execute the rest
+        # threading.active_count()
         t1 = time.time()
         for i in range(numFunctions, 0, -1):
             print("NUEVO THREAD")
+            print(i)
+            print("ACTIVE THREADS: ")
+            print(threading.active_count())
             threadToAdd = threading.Thread(target=myFunction, args=(clientSocket, ))
             threads.append(threadToAdd)
             threadToAdd.start()
-            time.sleep(1)
+            print("ACTIVE THREADS: ")
+            print(threading.active_count())
 
         for thread in threads:
-            print("THREAD JOIN")
             thread.join()
         t2 = time.time()
 
