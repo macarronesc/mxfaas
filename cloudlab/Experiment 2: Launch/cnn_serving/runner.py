@@ -73,18 +73,12 @@ checkTableShadow = {}
 valueTable = {}
 mapPIDtoIO = {}
 lockCache = threading.Lock()
+results = []
+results_lock = threading.Lock()
 
-def myFunction(clientSocket_):
-    global actionModule
+def sendResponse(clientSocket_, message):
+    msg = json.dumps(message)
 
-    # Set the main function
-    result = actionModule.lambda_handler()
-
-    # Send the result (Test Pid)
-    result["myPID"] = os.getpid()
-    msg = json.dumps(result)
-
-        
     response_headers = {
         'Content-Type': 'text/html; encoding=utf8',
         'Content-Length': len(msg),
@@ -104,10 +98,20 @@ def myFunction(clientSocket_):
         clientSocket_.send(response_headers_raw.encode(encoding="utf-8"))
         clientSocket_.send('\r\n'.encode(encoding="utf-8")) # to separate headers from body
         clientSocket_.send(msg.encode(encoding="utf-8"))
+        clientSocket_.close()
     except:
         clientSocket_.close()
-    clientSocket_.close()
 
+
+def myFunction(t1):
+    global actionModule
+
+    # Set the main function
+    result = actionModule.lambda_handler()
+    result["time"] = time.time() - t1
+
+    with results_lock:
+        results.append(result)
 
 def performIO(clientSocket_):
     global numCores
@@ -120,8 +124,6 @@ def performIO(clientSocket_):
     data_ = b''
     data_ += clientSocket_.recv(1024)
     dataStr = data_.decode('UTF-8')
-
-    print("PETICION")
 
     while True:
         dataStrList = dataStr.splitlines()
@@ -137,8 +139,6 @@ def performIO(clientSocket_):
     operation = message["operation"]
     blobName = message["blobName"]
     blockedID = message["pid"]
-
-    print(operation)
 
     my_id = threading.get_native_id()
 
@@ -182,16 +182,13 @@ def performIO(clientSocket_):
         blob_client.upload_blob(value, overwrite=True)
         blob_val = "none"
     
-    print("TEST2")
     messageToRet = json.dumps({"value":"OK"})
 
-    print("TEST3")
     clientSocket_.send(messageToRet.encode(encoding="utf-8"))
     ####### TEST IF IMPROVE THE SPEED #######
     # clientSocket_.close()
 
 def IOThread():
-    print("IOTHREAD")
     myHost = '0.0.0.0'
     myPort = 3333
 
@@ -209,6 +206,7 @@ def run():
     # actionModule:  the module to execute
     global actionModule
     global numCores
+    global results
     # Set the core of mxcontainer
     numCores = 16
     affinity_mask = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
@@ -290,9 +288,6 @@ def run():
         
         responseFlag = False
         if message != None:
-            print("Message: ")
-            print(message)
-
             if "numCores" in message:
                 numCores = int(message["numCores"])
 
@@ -314,54 +309,26 @@ def run():
                 numFunctions = int(message["numFunctions"])
                 
         if responseFlag == True:
-            response_headers = {
-                'Content-Type': 'text/html; encoding=utf8',
-                'Content-Length': len(msg),
-                'Connection': 'close',
-            }
-            response_headers_raw = ''.join('%s: %s\r\n' % (k, v) for k, v in response_headers.items())
-
-            response_proto = 'HTTP/1.1'
-            response_status = '200'
-            response_status_text = 'OK' # this can be random
-
-            # sending all this stuff
-            r = '%s %s %s\r\n' % (response_proto, response_status, response_status_text)
-
-            clientSocket.send(r.encode(encoding="utf-8"))
-            clientSocket.send(response_headers_raw.encode(encoding="utf-8"))
-            clientSocket.send('\r\n'.encode(encoding="utf-8")) # to separate headers from body
-            clientSocket.send(msg.encode(encoding="utf-8"))
-            clientSocket.close()
+            sendResponse(clientSocket,  result)
             continue
 
+        results = []
         threads = []
-            
-        print("NUM FUNCTIONS:")
-        print(numFunctions)
-
-        # Instead of having wait_termination and update_threads and maybe we can have:
-        # An algorithm that checks if the number of functions to execute is greater than the number of threads
-        # And if it is, then execute x functions, wait and then execute the rest
-        # threading.active_count()
-        t1 = time.time()
+        
         for i in range(numFunctions, 0, -1):
-            print("NUEVO THREAD")
-            print(i)
-            print("ACTIVE THREADS: ")
-            print(threading.active_count())
-            threadToAdd = threading.Thread(target=myFunction, args=(clientSocket, ))
+            t1 = time.time()
+            """while(threading.active_count() > numCores):
+                print("ACTIVE THREAD")
+                pass"""
+
+            threadToAdd = threading.Thread(target=myFunction, args=(t1, ))
             threads.append(threadToAdd)
             threadToAdd.start()
-            print("ACTIVE THREADS: ")
-            print(threading.active_count())
 
         for thread in threads:
             thread.join()
-        t2 = time.time()
 
-        elapsed_time = t2 - t1
-        print(elapsed_time)
+        sendResponse(clientSocket, results)
 
 if __name__ == "__main__":
     # main program
