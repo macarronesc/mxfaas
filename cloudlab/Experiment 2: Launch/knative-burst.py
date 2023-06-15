@@ -42,12 +42,12 @@ def extract_times(data):
         times.append(float(time_text))
 
 def lambda_func(service, numFunctions):
-    # r = requests.post(service, json={"numCores": 20, "affinity_mask": list(range(20)), "printInfo": " "})
+    # r = requests.post(service, json={"numCores": 16, "affinity_mask": list(range(16)), "printInfo": " "})
     r = requests.post(service, json={"name": "test", "numFunctions": numFunctions})
     print(r.text)
     extract_times(json.loads(r.text))
 
-loads = [1, 5, 10]
+loads = [1, 5, 10, 15, 20]
 
 output_file = open("run-all-out.txt", "w")
 

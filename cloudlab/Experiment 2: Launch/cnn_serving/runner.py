@@ -145,32 +145,38 @@ def performIO(clientSocket_):
     blob_client = BlobClient.from_connection_string(connection_string, container_name="artifacteval", blob_name=blobName)
 
     if operation == "get":
-        with lockCache:
-            if blobName in checkTable:
-                myLeader = mapPIDtoLeader[blobName]
-                myEvent = threading.Event()
-                mapPIDtoIO[my_id] = myEvent
-                checkTable[blobName].append(my_id)
-                checkTableShadow[myLeader].append(my_id)
-                myEvent.wait()
-                blob_val = valueTable[myLeader]
-                mapPIDtoIO.pop(my_id)
-                checkTableShadow[myLeader].remove(my_id)
-                if len(checkTableShadow[myLeader]) == 0:
-                    checkTableShadow.pop(myLeader)
-                    valueTable.pop(myLeader)
-            else:
-                mapPIDtoLeader[blobName] = my_id
-                checkTable[blobName] = []
-                checkTableShadow[my_id] = []
-                checkTable[blobName].append(my_id)
-                blob_val = (blob_client.download_blob()).readall()
-                valueTable[my_id] = blob_val
-                checkTable[blobName].remove(my_id)
-                for elem in checkTable[blobName]:
-                    mapPIDtoIO[elem].set()
-                checkTable.pop(blobName)
-            
+        lockCache.acquire()
+        if blobName in checkTable:
+            myLeader = mapPIDtoLeader[blobName]
+            myEvent = threading.Event()
+            mapPIDtoIO[my_id] = myEvent
+            checkTable[blobName].append(my_id)
+            checkTableShadow[myLeader].append(my_id)
+            lockCache.release()
+            myEvent.wait()
+            lockCache.acquire()
+            blob_val = valueTable[myLeader]
+            mapPIDtoIO.pop(my_id)
+            checkTableShadow[myLeader].remove(my_id)
+            if len(checkTableShadow[myLeader]) == 0:
+                checkTableShadow.pop(myLeader)
+                valueTable.pop(myLeader)
+            lockCache.release()
+        else:
+            mapPIDtoLeader[blobName] = my_id
+            checkTable[blobName] = []
+            checkTableShadow[my_id] = []
+            checkTable[blobName].append(my_id)
+            lockCache.release()
+            blob_val = (blob_client.download_blob()).readall()
+            lockCache.acquire()
+            valueTable[my_id] = blob_val
+            checkTable[blobName].remove(my_id)
+            for elem in checkTable[blobName]:
+                mapPIDtoIO[elem].set()
+            checkTable.pop(blobName)
+            lockCache.release()
+
         full_blob_name = blobName.split(".")
         proc_blob_name = full_blob_name[0] + "_" + str(blockedID) + "." + full_blob_name[1]
         with open(proc_blob_name, "wb") as my_blob:
@@ -185,8 +191,6 @@ def performIO(clientSocket_):
     messageToRet = json.dumps({"value":"OK"})
 
     clientSocket_.send(messageToRet.encode(encoding="utf-8"))
-    ####### TEST IF IMPROVE THE SPEED #######
-    # clientSocket_.close()
 
 def IOThread():
     myHost = '0.0.0.0'
@@ -317,9 +321,8 @@ def run():
         
         for i in range(numFunctions, 0, -1):
             t1 = time.time()
-            """while(threading.active_count() > numCores):
-                print("ACTIVE THREAD")
-                pass"""
+            while(threading.active_count() > numCores):
+                pass
 
             threadToAdd = threading.Thread(target=myFunction, args=(t1, ))
             threads.append(threadToAdd)
