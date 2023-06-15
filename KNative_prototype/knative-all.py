@@ -53,7 +53,7 @@ def EnforceActivityWindow(start_time, end_time, instance_events):
         pass
     return events_iit
 
-loads = [1, 5, 10]
+loads = [1, 5, 10, 15, 20]
 
 output_file = open("run-all-out.txt", "w")
 
