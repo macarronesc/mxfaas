@@ -29,8 +29,6 @@ lines = lines[1:] # delete the first line
 services = []
 serviceNames = []
 
-times_plots = []
-
 for line in lines:
     serviceName = line.split()[0] 
     if serviceName not in serviceNames:
@@ -39,7 +37,7 @@ for line in lines:
 for serviceName in serviceNames:
     services.append(getUrlByFuncName(serviceName))
 
-def plot_results(data, dst):
+def plot_results(data, dst, service):
     x = []
     y = []
     colors = []
@@ -65,7 +63,7 @@ def plot_results(data, dst):
 
     plt.xlabel('Execution time (sec)')
     plt.ylabel('Function calls')
-    plt.title('Function Call Timeline')  # Add a title
+    plt.title('Function Call Timeline (' + service + ")")  # Add a title
     plt.grid(True, zorder=1)
 
     # Add legend
@@ -73,13 +71,14 @@ def plot_results(data, dst):
 
     if dst is None:
         os.makedirs('plots', exist_ok=True)
-        dst = os.path.join(os.getcwd(), 'plots', '{}_{}'.format(int(time.time()), 'timeline.png'))
+        dst = os.path.join(os.getcwd(), 'plots', '{}_{}'.format(int(time.time()), service + '_timeline.png'))
     else:
         dst = os.path.expanduser(dst) if '~' in dst else dst
-        dst = '{}_{}'.format(os.path.realpath(dst), 'timeline.png')
+        dst = '{}_{}'.format(os.path.realpath(dst), service + '_timeline.png')
 
     plt.tight_layout()  # Improve spacing and layout
     plt.savefig(dst, dpi=300)
+    plt.close('all')
 
 
 def extract_times(data, times_plot):
@@ -127,7 +126,7 @@ def EnforceActivityWindow(start_time, end_time, instance_events):
         pass
     return events_iit
 
-loads = [1, 5]
+loads = [1, 5, 10, 15]
 
 output_file = open("run-all-out.txt", "w")
 
@@ -149,6 +148,7 @@ for load in loads:
         threads = []
         times = []
         after_time, before_time = 0, 0
+        times_plots = []
 
         st = 0
         for t in instance_events:
@@ -172,15 +172,4 @@ for load in loads:
         print(np.percentile(times, 95), file=output_file, flush=True)
         print(np.percentile(times, 99), file=output_file, flush=True)
 
-
-print("TIMES PLOTS")
-print(times_plots)
-
-times_plots = times_plots + times_plots
-times_plots = times_plots + times_plots
-times_plots = times_plots + times_plots
-
-
-print(len(times_plots))
-
-plot_results(times_plots, None)
+        plot_results(times_plots, "./plots/" + str(load) + "_functions", serviceNames[services.index(service)])

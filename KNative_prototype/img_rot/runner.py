@@ -96,6 +96,8 @@ responseMapWindows = [] # map from pid to response
 
 affinity_mask = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
 
+times_plot = {}
+
 
 # The function to update the core nums by request. 
 def updateThread():
@@ -166,13 +168,19 @@ def myFunction(data_, clientSocket_):
 
     # Set the main function
     if numCoreFlag == False:
+        # Plot
+        times_plot["call_start"] = time.time()
+
         result = actionModule.lambda_handler()
+
+        # Plot
+        times_plot["call_done"] = time.time()
+        result["times_plot"] = times_plot
 
         # Send the result (Test Pid)
         result["myPID"] = os.getpid()
         msg = json.dumps(result)
 
-        
     response_headers = {
         'Content-Type': 'text/html; encoding=utf8',
         'Content-Length': len(msg),

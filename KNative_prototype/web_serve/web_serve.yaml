@@ -8,7 +8,7 @@ spec:
     spec:
       containerConcurrency: 1000
       containers:
-        - image: jovanvr97/web_serve_knative:latest
+        - image: macarronesc0lithops/web_serve_knative:01
           resources:
             requests:
               cpu: 1000m

@@ -1,8 +1,8 @@
 # Actual version:
-# cnn_serving: 01 --> Initial version
-# cnn_serving: 02 --> Test version
+# cnn_serving_cloudlab: 01 --> Initial version
+# cnn_serving_cloudlab: 02 --> Test version
 
-service=cnn_serving
+service=cnn_serving_cloudlab
 version=02
 
 

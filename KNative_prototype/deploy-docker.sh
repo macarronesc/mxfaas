@@ -1,7 +1,12 @@
 # Actual version:
 # cnn_serving: 01 --> Final version with timers
+# img_res: 01 --> Final version with timers
+# img_rot: 01 --> Final version with timers
+# ml_train: 01 --> Final version with timers
+# vid_proc: 01 --> Final version with timers
+# web_serve: 01 --> Final version with timers
 
-service=cnn_serving
+service=web_serve
 version=01
 
 
