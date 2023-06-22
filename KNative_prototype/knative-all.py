@@ -45,7 +45,7 @@ def plot_results(data, dst, service):
     for i, d in enumerate(data):
         x.extend([d['host_submit'], d['call_start'], d['call_done'], d['status_fetched']])
         y.extend([i + 1] * 4)
-        colors.extend(['#E63946', '#FFC300', '#0077B6', '#FF9F1C'])  # Custom color palette
+        colors.extend(['#E63946', '#00FF00AA', '#0077B6', '#FF9F1C'])  # Custom color palette
 
     x = [i - min(x) for i in x]
 
@@ -55,7 +55,7 @@ def plot_results(data, dst, service):
 
     # Create custom labels and colored rectangles for the legend
     legend_labels = ['Host Submit', 'Call Start', 'Call Done', 'Status Fetched']
-    legend_colors = ['#E63946', '#FFC300', '#0077B6', '#FF9F1C']
+    legend_colors = ['#E63946', '#00FF00AA', '#0077B6', '#FF9F1C']
     scatter_handles = []
     for color, label in zip(legend_colors, legend_labels):
         patch = mpatches.Patch(color=color, label=label)
@@ -73,6 +73,7 @@ def plot_results(data, dst, service):
         os.makedirs('plots', exist_ok=True)
         dst = os.path.join(os.getcwd(), 'plots', '{}_{}'.format(int(time.time()), service + '_timeline.png'))
     else:
+        os.makedirs('plots', exist_ok=True)
         dst = os.path.expanduser(dst) if '~' in dst else dst
         dst = '{}_{}'.format(os.path.realpath(dst), service + '_timeline.png')
 

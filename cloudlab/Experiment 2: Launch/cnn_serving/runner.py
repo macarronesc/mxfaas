@@ -106,8 +106,18 @@ def sendResponse(clientSocket_, message):
 def myFunction(t1):
     global actionModule
 
+    times_plot = {}
+
+    # Plot
+    times_plot["call_start"] = time.time()
+
     # Set the main function
     result = actionModule.lambda_handler()
+
+    # Plot
+    times_plot["call_done"] = time.time()
+    result["times_plot"] = times_plot
+
     result["time"] = time.time() - t1
 
     with results_lock:
