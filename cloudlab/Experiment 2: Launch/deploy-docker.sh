@@ -1,7 +1,12 @@
 # Actual version:
 # cnn_serving_cloudlab: 01 --> Final version with timers
+# img_res_cloudlab: 01 --> Final version with timers
+# img_rot_cloudlab: 01 --> Final version with timers
+# ml_train_cloudlab: 01 --> Final version with timers
+# vid_proc_cloudlab: 01 --> Final version with timers
+# web_serve_cloudlab: 01 --> Final version with timers
 
-service=cnn_serving
+service=web_serve
 version=01
 
 

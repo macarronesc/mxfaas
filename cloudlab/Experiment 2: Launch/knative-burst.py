@@ -103,7 +103,7 @@ def lambda_func(service, numFunctions):
     times_plot = {}
     times_plot["host_submit"] = time.time()
 
-    # r = requests.post(service, json={"numCores": 5, "affinity_mask": list(range(5)), "printInfo": " "})
+    # r = requests.post(service, json={"numCores": 16, "affinity_mask": list(range(16)), "printInfo": " "})
     r = requests.post(service, json={"name": "test", "numFunctions": numFunctions})
 
     # Plot
@@ -117,7 +117,7 @@ def lambda_func(service, numFunctions):
         print("ERROR")
         pass
 
-loads = [1, 5, 10, 15]
+loads = [1, 5, 10]
 
 output_file = open("run-all-out.txt", "w")
 
