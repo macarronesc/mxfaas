@@ -29,10 +29,13 @@ lines = lines[1:] # delete the first line
 services = []
 serviceNames = []
 
-for line in lines:
+"""for line in lines:
     serviceName = line.split()[0] 
     if serviceName not in serviceNames:
-        serviceNames.append(serviceName)
+        serviceNames.append(serviceName)"""
+
+# serviceNames.append("img-rot")
+serviceNames.append("ml-train")
 
 for serviceName in serviceNames:
     services.append(getUrlByFuncName(serviceName))
@@ -100,6 +103,7 @@ def lambda_func(service, host_submit):
     # Plot
     times_plot["host_submit"] = host_submit
 
+    # r = requests.post(service, json={"numCores": 12, "affinity_mask": list(range(12))})
     r = requests.post(service, json={"name": "test"})
 
     # Plot
@@ -127,7 +131,7 @@ def EnforceActivityWindow(start_time, end_time, instance_events):
         pass
     return events_iit
 
-loads = [1, 5, 10, 15]
+loads = [30, 80]
 
 output_file = open("run-all-out.txt", "w")
 

@@ -30,11 +30,16 @@ lines = lines[1:] # delete the first line
 services = []
 serviceNames = []
 
-for line in lines:
+"""for line in lines:
     serviceName = line.split()[0] 
     if serviceName not in serviceNames:
         serviceNames.append(serviceName)
-        print("ServiceName: " + serviceName)
+        print("ServiceName: " + serviceName)"""
+
+# serviceNames.append("cnn-serving-cloudlab")
+serviceNames.append("ml-train")
+
+
 
 for serviceName in serviceNames:
     services.append(getUrlByFuncName(serviceName))
@@ -117,7 +122,7 @@ def lambda_func(service, numFunctions):
         print("ERROR")
         pass
 
-loads = [1, 5, 10]
+loads = [80]
 
 output_file = open("run-all-out.txt", "w")
 
