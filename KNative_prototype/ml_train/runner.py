@@ -166,13 +166,20 @@ def myFunction(data_, clientSocket_):
 
     # Set the main function
     if numCoreFlag == False:
+        # Plot
+        times_plot = {}
+        times_plot["call_start"] = time.time()
+
         result = actionModule.lambda_handler()
+
+        # Plot
+        times_plot["call_done"] = time.time()
+        result["times_plot"] = times_plot
 
         # Send the result (Test Pid)
         result["myPID"] = os.getpid()
         msg = json.dumps(result)
 
-        
     response_headers = {
         'Content-Type': 'text/html; encoding=utf8',
         'Content-Length': len(msg),
@@ -214,7 +221,6 @@ def waitTermination(childPid):
     for index in range(len(requestQueue)):
         # Find the first waiting child process and run it.
         if(mapPIDtoStatus[requestQueue[index]] == "waiting"):
-            # print("(ii) Request unblock")
             mapPIDtoStatus[requestQueue[index]] = "running"
             try:
                 os.kill(requestQueue[index], signal.SIGCONT)
@@ -260,7 +266,6 @@ def performIO(clientSocket_):
     for child in mapPIDtoStatus.copy():
         if child in mapPIDtoStatus:
             if mapPIDtoStatus[child] == "waiting":
-                # print("(iii) Request unblock")
                 mapPIDtoStatus[child] = "running"
                 try:
                     os.kill(child, signal.SIGCONT)
@@ -405,7 +410,7 @@ def run():
     while(True):
         
         (clientSocket, address) = serverSocket.accept()
-        # print("Accept a new connection from %s" % str(address), flush=True)
+        print("Accept a new connection from %s" % str(address), flush=True)
         
         data_ = b''
 
@@ -527,21 +532,16 @@ def run():
 
         if childProcess == 0:
             # begin fork
-            t1 = time.time()
             myFunction(data_, clientSocket)
-            t2 = time.time()
-            print("My exec time = ", t2-t1)
             os._exit(os.EX_OK)
         else:
             # Append submit time to the responseMapWindows
             if waitForRunning:
                 # If there is no free resources (cpu core) for the process to run, then we set the childprocess to sleep.
-                print("(i) Request waiting")
                 mapPIDtoStatus[childProcess] = "waiting"
                 os.kill(childProcess, signal.SIGSTOP)
             else:
                 # If there are free resources (cpu core) for the process to run, then we let the childprocess to run.
-                print("(i) Request running")
                 mapPIDtoStatus[childProcess] = "running"
             
             requestQueue.append(childProcess)

@@ -166,13 +166,20 @@ def myFunction(data_, clientSocket_):
 
     # Set the main function
     if numCoreFlag == False:
+        # Plot
+        times_plot = {}
+        times_plot["call_start"] = time.time()
+
         result = actionModule.lambda_handler()
+
+        # Plot
+        times_plot["call_done"] = time.time()
+        result["times_plot"] = times_plot
 
         # Send the result (Test Pid)
         result["myPID"] = os.getpid()
         msg = json.dumps(result)
 
-        
     response_headers = {
         'Content-Type': 'text/html; encoding=utf8',
         'Content-Length': len(msg),
@@ -390,6 +397,7 @@ def run():
     phOut = PrintHook()
     phOut.Start(MyHookOut)
 
+
     # Monitor numCore update
     threadUpdate = threading.Thread(target=updateThread)
     threadUpdate.start()
@@ -410,11 +418,7 @@ def run():
 
         dataStr = data_.decode('UTF-8')
 
-        print("Data: " + dataStr)
-
         if 'Host' not in dataStr:
-            print("NO HOST")
-
             msg = 'OK'
             response_headers = {
                 'Content-Type': 'text/html; encoding=utf8',
@@ -453,14 +457,9 @@ def run():
         
         responseFlag = False
         if message != None:
-            print("Msg != none: ")
-            print(message)
 
             if "numCores" in message:
                 numCores = int(message["numCores"])
-
-                print("NumCores: " + str(numCores))
-
                 result = {"Response": "Ok"}
                 responseMapWindows = []
                 if "affinity_mask" in message:
@@ -469,10 +468,7 @@ def run():
                 msg = json.dumps(result)
                 responseFlag = True
 
-            # Node Controller: Test
             if "Q" in message:
-                print("Q in message")
-
                 i = []
                 for responseTime in responseMapWindows:
                     if responseTime[1][1] != -1:
@@ -486,10 +482,7 @@ def run():
                 msg = json.dumps(result)
                 responseFlag = True
 
-            # Node Controller: Clear all 
             if "Clear" in message:
-                print("Clear in message")
-                
                 responseMapWindows = []
                 
         if responseFlag == True:

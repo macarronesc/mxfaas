@@ -8,7 +8,7 @@ spec:
     spec:
       containerConcurrency: 1000
       containers:
-        - image: jovanvr97/ml_train_knative:latest
+        - image: macarronesc0lithops/ml_train_knative:01
           resources:
             requests:
               cpu: 1000m

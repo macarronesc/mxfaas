@@ -1,11 +1,13 @@
 # Actual version:
-# cnn_serving: 04 --> Only added prints
-# cnn_serving: 05 --> Added a single download
-# cnn_serving: 06 --> Original version
-# img_res: 01
+# cnn_serving: 01 --> Final version with timers
+# img_res: 01 --> Final version with timers
+# img_rot: 01 --> Final version with timers
+# ml_train: 01 --> Final version with timers
+# vid_proc: 01 --> Final version with timers
+# web_serve: 01 --> Final version with timers
 
-service=cnn_serving
-version=06
+service=web_serve
+version=01
 
 
 cd ./$service

@@ -8,6 +8,7 @@ import json
 import os
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import random
 
 # get the url of a function
 def getUrlByFuncName(funcName):
@@ -32,10 +33,13 @@ serviceNames = []
 """for line in lines:
     serviceName = line.split()[0] 
     if serviceName not in serviceNames:
-        serviceNames.append(serviceName)"""
+        serviceNames.append(serviceName)
+        print("ServiceName: " + serviceName)"""
 
-# serviceNames.append("img-rot")
+# serviceNames.append("cnn-serving-cloudlab")
 serviceNames.append("ml-train")
+
+
 
 for serviceName in serviceNames:
     services.append(getUrlByFuncName(serviceName))
@@ -84,91 +88,54 @@ def plot_results(data, dst, service):
     plt.savefig(dst, dpi=300)
     plt.close('all')
 
-
-def extract_times(data, times_plot):
+def extract_times(data, times_plot_aux):
+    global times
     global times_plots
 
-    times_plot["call_start"] = data['times_plot']['call_start']
-    times_plot["call_done"] = data['times_plot']['call_done']
+    for item in data:
+        times_plot = {}
+        times_plot["host_submit"] = times_plot_aux["host_submit"] 
+        times_plot["call_start"] = item['times_plot']['call_start']
+        times_plot["call_done"] = item['times_plot']['call_done']
+        times_plot["status_fetched"] = times_plot_aux["status_fetched"] 
+        times_plots.append(times_plot)
 
-    times_plots.append(times_plot)
+        time_text = item["time"]
+        times.append(float(time_text))
 
-
-def lambda_func(service, host_submit):
-    global times
-    times_plot = {}
-
-    t1 = time.time()
-
+def lambda_func(service, numFunctions):
     # Plot
-    times_plot["host_submit"] = host_submit
+    times_plot = {}
+    times_plot["host_submit"] = time.time()
 
-    # r = requests.post(service, json={"numCores": 12, "affinity_mask": list(range(12))})
-    r = requests.post(service, json={"name": "test"})
+    # r = requests.post(service, json={"numCores": 16, "affinity_mask": list(range(16)), "printInfo": " "})
+    r = requests.post(service, json={"name": "test", "numFunctions": numFunctions})
 
     # Plot
     times_plot["status_fetched"] = time.time()
 
     print(r.text)
-    t2 = time.time()
-    times.append(t2-t1)
 
-    # Plot
     try:
         extract_times(json.loads(r.text), times_plot)
     except:
+        print("ERROR")
         pass
 
-def EnforceActivityWindow(start_time, end_time, instance_events):
-    events_iit = []
-    events_abs = [0] + instance_events
-    event_times = [sum(events_abs[:i]) for i in range(1, len(events_abs) + 1)]
-    event_times = [e for e in event_times if (e > start_time)and(e < end_time)]
-    try:
-        events_iit = [event_times[0]] + [event_times[i]-event_times[i-1]
-                                         for i in range(1, len(event_times))]
-    except:
-        pass
-    return events_iit
-
-loads = [30, 80]
+loads = [80]
 
 output_file = open("run-all-out.txt", "w")
 
-indR = 0
 for load in loads:
-    duration = 1
-    seed = 100
-    rate = load
-    # generate Poisson's distribution of events 
-    inter_arrivals = []
-    np.random.seed(seed)
-    beta = 1.0/rate
-    oversampling_factor = 2
-    inter_arrivals = list(np.random.exponential(scale=beta, size=int(oversampling_factor*duration*rate)))
-    instance_events = EnforceActivityWindow(0,duration,inter_arrivals)
-        
+    print("LOAD: " + str(load))
+
     for service in services:
-        
+        print("Service: " + service)
         threads = []
         times = []
-        after_time, before_time = 0, 0
         times_plots = []
 
-        st = 0
-        for t in instance_events:
-            st = st + t - (after_time - before_time)
-            before_time = time.time()
-            if st > 0:
-                time.sleep(st)
-
-            threadToAdd = threading.Thread(target=lambda_func, args=(service, time.time()))
-            threads.append(threadToAdd)
-            threadToAdd.start()
-            after_time = time.time()
-
-        for thread in threads:
-            thread.join()
+        lambda_func(service, load)
 
         print("=====================" + serviceNames[services.index(service)] + "=====================", file=output_file, flush=True)
         print(mean(times), file=output_file, flush=True)

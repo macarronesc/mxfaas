@@ -166,13 +166,20 @@ def myFunction(data_, clientSocket_):
 
     # Set the main function
     if numCoreFlag == False:
+        # Plot
+        times_plot = {}
+        times_plot["call_start"] = time.time()
+
         result = actionModule.lambda_handler()
+
+        # Plot
+        times_plot["call_done"] = time.time()
+        result["times_plot"] = times_plot
 
         # Send the result (Test Pid)
         result["myPID"] = os.getpid()
         msg = json.dumps(result)
 
-        
     response_headers = {
         'Content-Type': 'text/html; encoding=utf8',
         'Content-Length': len(msg),
